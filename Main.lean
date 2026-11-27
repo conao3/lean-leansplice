@@ -1,5 +1,10 @@
 import Leansplice
 
+private def writeOutput (text : String) : IO Unit := do
+  let stdout ← IO.getStdout
+  stdout.putStr text
+  stdout.flush
+
 def main (args : List String) : IO UInt32 := do
   try
     match args with
@@ -8,7 +13,7 @@ def main (args : List String) : IO UInt32 := do
       let source ← IO.FS.readFile sourcePath
       match (Leansplice.parse patchText).bind (Leansplice.apply · source) with
       | .ok output =>
-        IO.print output
+        writeOutput output
         return 0
       | .error error =>
         IO.eprintln s!"leansplice: {error}"
@@ -16,7 +21,7 @@ def main (args : List String) : IO UInt32 := do
     | ["diff", oldPath, newPath] =>
       let source ← IO.FS.readFile oldPath
       let target ← IO.FS.readFile newPath
-      IO.print (Leansplice.render (Leansplice.diff source target))
+      writeOutput (Leansplice.render (Leansplice.diff source target))
       return 0
     | _ =>
       IO.eprintln "Usage: leansplice apply PATCH FILE | leansplice diff OLD NEW"

@@ -53,3 +53,18 @@ test "$status" -eq 1
 "$splice" apply git.patch expected > result
 cmp empty result
 printf 'Git interoperability: creation and deletion headers\n'
+
+if [[ -c /dev/full ]]; then
+  check_output_failure() {
+    local status=0 diagnostic
+    "$splice" "$@" >/dev/full 2>output-error || status=$?
+    test "$status" -eq 1
+    read -r diagnostic < output-error
+    [[ "$diagnostic" == leansplice:* ]]
+    printf 'CLI reports stdout failure: %s\n' "$1"
+  }
+
+  "$splice" diff empty expected > splice.patch
+  check_output_failure diff empty expected
+  check_output_failure apply splice.patch empty
+fi

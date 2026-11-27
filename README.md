@@ -24,9 +24,10 @@ lake build
 ```
 
 `apply` reads the named source file and prints the result without modifying it.
-On failure it prints a diagnostic to stderr and exits nonzero without printing
-partial output. `diff` uses the labels `a/file` and `b/file`; it prints an empty
-patch when the inputs are identical.
+If the patch is rejected, it prints a diagnostic to stderr and exits nonzero
+without printing partial output. Both commands exit nonzero on output errors.
+`diff` uses the labels `a/file` and `b/file`; it prints an empty patch when the
+inputs are identical.
 
 ## Lean API
 
