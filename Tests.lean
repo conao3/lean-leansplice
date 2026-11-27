@@ -18,6 +18,25 @@ def reject (name : String) (result : Except Error α) : IO Unit := do
 def malformed (name patch : String) : IO Unit :=
   reject name (parse patch)
 
+def repeatedRecords (label : String) (count : Nat) : String := Id.run do
+  let mut text := ""
+  for i in [:count] do
+    text := text ++ s!"{label} {i}\n---\n"
+  return text
+
+def randomStep (seed : Nat) : Nat :=
+  (1664525 * seed + 1013904223) % 4294967296
+
+def randomText (seed size : Nat) : String × Nat := Id.run do
+  let alphabet := #["alpha", "---", "", "é", "omega"]
+  let mut seed := seed
+  let mut text := ""
+  for i in [:size] do
+    seed := randomStep seed
+    text := text ++ alphabet[(seed / 256) % alphabet.size]!
+    if i + 1 < size || seed % 2 == 0 then text := text.push '\n'
+  return (text, seed)
+
 def main : IO Unit := do
   let headers := "--- a/file\n+++ b/file\n"
   let replacement := headers ++ "@@ -1 +1 @@ title\n-old\n+new\n"
@@ -103,4 +122,23 @@ def main : IO Unit := do
   check "multi-hunk application" (← unwrap (apply (diff farApart target) farApart)) target
   check "zero-context application" (← unwrap (apply (diff farApart target (context := 0)) farApart))
     target
+  let source := repeatedRecords "old" 2048
+  let target := repeatedRecords "new" 2048
+  let repeated ← unwrap (parse (render (diff source target)))
+  check "repeated separator round trip" (← unwrap (apply repeated source)) target
+  let .file _ repeatedHunks := repeated
+    | throw (IO.userError "expected a repeated-record patch")
+  let separatorCount := repeatedHunks.foldl (fun total hunk =>
+    hunk.edits.foldl (fun count edit =>
+      if edit.kind == .context && edit.line.text == "---" then count + 1 else count) total) 0
+  check "repeated separators stay in context" separatorCount 2048
+  let mut seed := 42
+  for i in [:80] do
+    let size := if i < 40 then 32 else 150
+    let (source, next) := randomText seed (seed % size)
+    let (target, next) := randomText next (next % size)
+    seed := randomStep next
+    let generated := diff source target (context := i % 5)
+    let reparsed ← unwrap (parse (render generated))
+    check s!"random round trip {i}" (← unwrap (apply reparsed source)) target
   IO.println "Leansplice golden and round-trip tests passed."
