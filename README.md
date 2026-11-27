@@ -60,8 +60,9 @@ and nearby edits share a hunk.
 ## Supported patches
 
 - One file, with `---` and `+++` headers, unified hunks, and an optional standard
-  Git text prelude. File labels, including quoting or timestamps, are preserved
-  as written and are never used to look up files.
+  Git text prelude. Mode changes accompanying text hunks are ignored. File
+  labels, including quoting or timestamps, are preserved as written and are
+  never used to look up files.
 - Line ranges may omit a count of one. Application checks both hunk
   coordinates, all context and removal lines, and their LF status; it never
   relocates a hunk. Text outside the hunks is copied as-is.

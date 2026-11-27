@@ -24,6 +24,14 @@ def main : IO Unit := do
   let patch ← unwrap (parse replacement)
   check "render golden" (render patch) replacement
   check "exact application" (← unwrap (apply patch "old\n")) "new\n"
+  let gitHeader := "diff --git a/file b/file\n"
+  let modes := "old mode 100644\nnew mode 100755\n"
+  let index := "index 3367afd..3e75765\n"
+  let modeChange ← unwrap (parse (gitHeader ++ modes ++ index ++ replacement))
+  check "mode metadata does not block text application"
+    (← unwrap (apply modeChange "old\n")) "new\n"
+  check "render omits mode changes" (render modeChange) (gitHeader ++ index ++ replacement)
+  malformed "mode-only patch" (gitHeader ++ modes)
   reject "no relocation" (apply patch "other\nold\n")
   reject "wrong final LF" (apply patch "old")
   let context ← unwrap (parse (headers ++ "@@ -1,2 +1,2 @@\n first\n-x\n+y\n"))

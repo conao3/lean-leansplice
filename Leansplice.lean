@@ -161,20 +161,22 @@ def parse (patch : String) : Except Error Patch := do
   let lines := splitText patch
   unless lines.back!.terminated do
     throw (.parse lines.size "patch must end with an LF")
+  let lineAt (index : Nat) : String := (lines[index]?.map (·.text)).getD ""
   let mut i := 0
   let mut prelude := #[]
   if lines[0]!.text.startsWith "diff --git " then
     prelude := prelude.push lines[0]!.text
     i := i + 1
-    if (lines[i]?.map (·.text) |>.getD "").startsWith "new file mode " ||
-       (lines[i]?.map (·.text) |>.getD "").startsWith "deleted file mode " then
-      prelude := prelude.push lines[i]!.text
+    if (lineAt i).startsWith "new file mode " || (lineAt i).startsWith "deleted file mode " then
+      prelude := prelude.push (lineAt i)
       i := i + 1
-    if (lines[i]?.map (·.text) |>.getD "").startsWith "index " then
-      prelude := prelude.push lines[i]!.text
+    else if (lineAt i).startsWith "old mode " && (lineAt (i + 1)).startsWith "new mode " then
+      i := i + 2
+    if (lineAt i).startsWith "index " then
+      prelude := prelude.push (lineAt i)
       i := i + 1
   let readLabel (index : Nat) (marker : String) : Except Error String := do
-    let raw := (lines[index]?.map (·.text)).getD ""
+    let raw := lineAt index
     if !raw.startsWith marker || raw == marker then
       throw (.parse (index + 1) s!"expected a {marker.trimAscii.toString} file header")
     return (raw.drop 4).toString
