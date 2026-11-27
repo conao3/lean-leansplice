@@ -138,7 +138,7 @@ private def parseHunks (lines : Array TextLine) (start : Nat) : Except Error (Ar
     while i < lines.size && (oldCount < hunk.oldRange.count || newCount < hunk.newRange.count) do
       let raw := lines[i]!.text
       let kind : EditKind ← match raw.front? with
-        | some ' ' => pure .context
+        | none | some ' ' => pure .context
         | some '-' => pure .remove
         | some '+' => pure .add
         | _ => throw (.parse (i + 1) "expected a context, removal, or addition line")

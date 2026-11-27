@@ -65,7 +65,8 @@ and nearby edits share a hunk.
   never used to look up files.
 - Line ranges may omit a count of one. Application checks both hunk
   coordinates, all context and removal lines, and their LF status; it never
-  relocates a hunk. Text outside the hunks is copied as-is.
+  relocates a hunk. Bare empty lines within a hunk count as blank context.
+  Text outside the hunks is copied as-is.
 - The patch uses LF separators. CRs in file content and Git's
   `\ No newline at end of file` markers are preserved. An empty patch is a
   no-op; Git creation and deletion patches are applied to and from empty text.

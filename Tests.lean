@@ -36,6 +36,12 @@ def main : IO Unit := do
   reject "wrong final LF" (apply patch "old")
   let context ← unwrap (parse (headers ++ "@@ -1,2 +1,2 @@\n first\n-x\n+y\n"))
   reject "strict context" (apply context "wrong\nx\n")
+  let blankContext ← unwrap (parse (headers ++ "@@ -1,3 +1,3 @@\n\n-x\n+y\n\n"))
+  check "bare blank context counts on both sides"
+    (← unwrap (apply blankContext "\nx\n\n")) "\ny\n\n"
+  check "render restores the blank context prefix" (render blankContext)
+    (headers ++ "@@ -1,3 +1,3 @@\n \n-x\n+y\n \n")
+  reject "bare blank context is checked" (apply blankContext "unexpected\nx\n\n")
   let wrongNew ← unwrap (parse (headers ++ "@@ -1 +2 @@\n-x\n+y\n"))
   reject "strict target coordinate" (apply wrongNew "x\n")
   let overlap ← unwrap (parse (headers ++ "@@ -1 +1 @@\n-x\n+y\n@@ -1 +1 @@\n-x\n+z\n"))
