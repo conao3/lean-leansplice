@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ulimit -s 65536
+ulimit -S -s unlimited 2>/dev/null || ulimit -S -s "$(ulimit -H -s)"
 
 baseline="${1:-}"
 current="$PWD/.lake/build/bin/leansplice"
