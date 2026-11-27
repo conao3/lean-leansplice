@@ -51,6 +51,12 @@ def main : IO Unit := do
     (← unwrap (apply insertion "first\nlast\n")) "first\nmiddle\nlast\n"
   reject "cannot insert after an unterminated line" (apply insertion "first")
   let timestamp := "\t1970-01-01 00:00:00.000000000 +0000\n"
+  let body := "@@ -1 +1 @@\n-x\n+y\n"
+  let spaced ← unwrap (parse ("--- a/foo bar" ++ timestamp ++ "+++ b/foo bar" ++
+    timestamp ++ body))
+  check "render terminates spaced file labels with a tab" (render spaced)
+    ("--- a/foo bar\t\n+++ b/foo bar\t\n" ++ body)
+  check "spaced file labels round trip" (← unwrap (parse (render spaced))) spaced
   let creation := "@@ -0,0 +1 @@\n+created\n"
   let datedCreation ← unwrap (parse ("--- /dev/null" ++ timestamp ++ "+++ b/file" ++
     timestamp ++ creation))

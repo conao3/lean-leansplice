@@ -61,8 +61,9 @@ and nearby edits share a hunk.
 
 - One file, with `---` and `+++` headers, unified hunks, and an optional standard
   Git text prelude. Mode changes accompanying text hunks are ignored.
-  Tab-separated timestamps after file labels are stripped. The labels
-  otherwise keep their original spelling and are never used to look up files.
+  Tab-separated timestamps after file labels are stripped. Rendering adds a
+  tab delimiter after labels that contain spaces. Labels otherwise keep their
+  original spelling and are never used to look up files.
 - Line ranges may omit a count of one. Application checks both hunk
   coordinates, all context and removal lines, and their LF status; it never
   relocates a hunk. Bare empty lines within a hunk count as blank context.

@@ -187,6 +187,9 @@ def parse (patch : String) : Except Error Patch := do
   if hunks.isEmpty then throw (.parse (i + 3) "expected at least one hunk")
   return .file ⟨oldFile, newFile, prelude⟩ hunks
 
+private def renderLabel (label : String) : String :=
+  if label.contains ' ' then label.push '\t' else label
+
 /-- Render a patch, using the short form for ranges of one line. -/
 def render : Patch → String
   | .empty => ""
@@ -194,7 +197,7 @@ def render : Patch → String
     let mut out := ""
     for line in header.prelude do
       out := (out ++ line).push '\n'
-    out := out ++ s!"--- {header.oldFile}\n+++ {header.newFile}\n"
+    out := out ++ s!"--- {renderLabel header.oldFile}\n+++ {renderLabel header.newFile}\n"
     for hunk in hunks do
       out := out ++
         s!"@@ -{hunk.oldRange.render} +{hunk.newRange.render} @@{hunk.sectionHeader}\n"
