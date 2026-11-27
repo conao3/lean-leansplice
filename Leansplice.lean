@@ -177,9 +177,10 @@ def parse (patch : String) : Except Error Patch := do
       i := i + 1
   let readLabel (index : Nat) (marker : String) : Except Error String := do
     let raw := lineAt index
-    if !raw.startsWith marker || raw == marker then
+    let label := ((raw.drop 4).takeWhile (· != '\t')).toString
+    if !raw.startsWith marker || label.isEmpty then
       throw (.parse (index + 1) s!"expected a {marker.trimAscii.toString} file header")
-    return (raw.drop 4).toString
+    return label
   let oldFile ← readLabel i "--- "
   let newFile ← readLabel (i + 1) "+++ "
   let hunks ← parseHunks lines (i + 2)
@@ -268,7 +269,7 @@ private def diffWindows (edits : Array (Lean.Diff.Action × TextLine)) (context 
         current := some (start, stop)
   return if let some window := current then windows.push window else windows
 
-/-- Generate a unified patch with three context lines by default. Labels have no LF. -/
+/-- Generate a unified patch with three context lines by default. Labels have no LF or tab. -/
 def diff (source target : String) (oldFile := "a/file") (newFile := "b/file")
     (context : Nat := 3) : Patch := Id.run do
   let edits := Lean.Diff.diff (splitText source) (splitText target)

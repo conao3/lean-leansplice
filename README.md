@@ -54,15 +54,15 @@ def result : Except Leansplice.Error String := do
 ```
 
 `Leansplice.diff` accepts optional `oldFile`, `newFile`, and `context`
-arguments. Use nonempty labels without LF. The default context is three lines,
+arguments. Use nonempty labels without LF or tabs. The default context is three lines,
 and nearby edits share a hunk.
 
 ## Supported patches
 
 - One file, with `---` and `+++` headers, unified hunks, and an optional standard
-  Git text prelude. Mode changes accompanying text hunks are ignored. File
-  labels, including quoting or timestamps, are preserved as written and are
-  never used to look up files.
+  Git text prelude. Mode changes accompanying text hunks are ignored.
+  Tab-separated timestamps after file labels are stripped. The labels
+  otherwise keep their original spelling and are never used to look up files.
 - Line ranges may omit a count of one. Application checks both hunk
   coordinates, all context and removal lines, and their LF status; it never
   relocates a hunk. Bare empty lines within a hunk count as blank context.

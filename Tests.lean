@@ -50,6 +50,19 @@ def main : IO Unit := do
   check "empty range after first line"
     (← unwrap (apply insertion "first\nlast\n")) "first\nmiddle\nlast\n"
   reject "cannot insert after an unterminated line" (apply insertion "first")
+  let timestamp := "\t1970-01-01 00:00:00.000000000 +0000\n"
+  let creation := "@@ -0,0 +1 @@\n+created\n"
+  let datedCreation ← unwrap (parse ("--- /dev/null" ++ timestamp ++ "+++ b/file" ++
+    timestamp ++ creation))
+  check "render strips header timestamps" (render datedCreation)
+    ("--- /dev/null\n+++ b/file\n" ++ creation)
+  check "creation with a timestamp" (← unwrap (apply datedCreation "")) "created\n"
+  reject "timestamped creation requires empty source" (apply datedCreation "existing\n")
+  let datedDeletion ← unwrap (parse ("--- a/file" ++ timestamp ++ "+++ /dev/null" ++
+    timestamp ++ "@@ -1 +0,0 @@\n-x\n"))
+  check "deletion with a timestamp" (← unwrap (apply datedDeletion "x\n")) ""
+  reject "timestamped deletion must leave empty output" (apply datedDeletion "x\ny\n")
+  malformed "timestamp without a file label" ("--- " ++ timestamp ++ "+++ b/file\n" ++ creation)
   let marker := "\\ No newline at end of file\n"
   let withoutLF := headers ++ "@@ -1 +1 @@\n-é\n" ++ marker ++ "+文\n" ++ marker
   let patch ← unwrap (parse withoutLF)
