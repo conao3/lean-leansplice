@@ -1,0 +1,15 @@
+name = "leansplice"
+version = "0.1.0"
+defaultTargets = ["Leansplice", "leansplice"]
+testDriver = "tests"
+
+[[lean_lib]]
+name = "Leansplice"
+
+[[lean_exe]]
+name = "leansplice"
+root = "Main"
+
+[[lean_exe]]
+name = "tests"
+root = "Tests"
