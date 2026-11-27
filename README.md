@@ -86,4 +86,32 @@ With elan and Git on your PATH, `make check` also runs directly. It runs
 test that applies Git-generated patches with leansplice, then applies
 leansplice-generated patches with `git apply`.
 
+## Diff benchmark
+
+Diff generation trims common edges and uses Myers' shortest edit script for
+small edit distances. If the search exceeds 64 insertions and deletions, it
+pairs occurrences of each line in order and keeps the longest increasing
+chain of pairs. This avoids rescanning repeated lines; the fallback can
+produce a larger patch than a globally shortest edit script.
+
+To compare with the pre-change version, build its CLI in a separate worktree
+and pass that executable to `make bench`:
+
+```sh
+git worktree add --detach ../leansplice-baseline 65aa67d
+baseline="$(nix build path:../leansplice-baseline --no-link --print-out-paths)"
+nix develop --command make bench BASELINE="$baseline/bin/leansplice"
+```
+
+The benchmark times the native `diff` CLI, including file reads and patch
+rendering. It reports the median of five runs and checks the generated patch
+with strict application before timing each case.
+
+Example results on x86-64 Linux (Intel Xeon, Lean 4.36.0):
+
+| Input | Before | After |
+| --- | ---: | ---: |
+| 8,000 changed records alternating with 8,000 identical separators | 21.136 s | 0.063 s |
+| 100,000 lines with three replacements | 0.313 s | 0.141 s |
+
 Licensed under Apache-2.0.

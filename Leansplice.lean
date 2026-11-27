@@ -1,4 +1,4 @@
-import Lean.Util.Diff
+import Std.Data.HashMap.Basic
 
 namespace Leansplice
 
@@ -254,12 +254,144 @@ def apply (patch : Patch) (source : String) : Except Error String := do
     if line.terminated then output := output.push '\n'
   return output
 
-private def diffWindows (edits : Array (Lean.Diff.Action × TextLine)) (context : Nat) :
+private def diagonalY (x depth index : Nat) : Nat :=
+  (Int.ofNat x + Int.ofNat depth - 2 * Int.ofNat index).toNat
+
+private def previousDiagonal (last : Array Nat) (index : Nat) : Nat :=
+  if index == 0 || (index < last.size && last[index - 1]! < last[index]!) then
+    index
+  else
+    index - 1
+
+private def traceMatches (frontiers : Array (Array Nat)) (endX endY : Nat) :
+    Array (Nat × Nat) := Id.run do
+  let mut pairs := #[]
+  let mut x := endX
+  let mut y := endY
+  for i in [:frontiers.size] do
+    let depth := frontiers.size - i
+    let diagonal := ((Int.ofNat x - Int.ofNat y + Int.ofNat depth) / 2).toNat
+    let previous := previousDiagonal frontiers[depth - 1]! diagonal
+    let xBefore := frontiers[depth - 1]![previous]!
+    let yBefore := diagonalY xBefore (depth - 1) previous
+    while x > xBefore && y > yBefore do
+      x := x - 1
+      y := y - 1
+      pairs := pairs.push (x, y)
+    x := xBefore
+    y := yBefore
+  while x > 0 && y > 0 do
+    x := x - 1
+    y := y - 1
+    pairs := pairs.push (x, y)
+  return pairs.reverse
+
+private def myersMatches (source target : Array TextLine) (limit : Nat) :
+    Option (Array (Nat × Nat)) := Id.run do
+  if source.size > target.size + limit || target.size > source.size + limit then
+    return none
+  let mut frontiers : Array (Array Nat) := #[]
+  for depth in [:limit + 1] do
+    let mut next : Array Nat := #[]
+    for diagonal in [:depth + 1] do
+      let mut x := 0
+      if depth > 0 then
+        let last := frontiers.back!
+        let previous := previousDiagonal last diagonal
+        x := last[previous]! + (if previous == diagonal then 0 else 1)
+      let mut y := diagonalY x depth diagonal
+      while x < source.size && y < target.size && source[x]! == target[y]! do
+        x := x + 1
+        y := y + 1
+      if x == source.size && y == target.size then
+        return some (traceMatches frontiers x y)
+      next := next.push x
+    frontiers := frontiers.push next
+  return none
+
+private structure Anchor where
+  source : Nat
+  target : Nat
+  previous : Option Nat
+  deriving Inhabited
+
+private def anchorMatches (source target : Array TextLine) : Array (Nat × Nat) := Id.run do
+  let mut positions : Std.HashMap TextLine (List Nat) := {}
+  for i in [:target.size] do
+    let j := target.size - i - 1
+    positions := positions.alter target[j]! fun rest => some (j :: rest.getD [])
+  let mut anchors : Array Anchor := #[]
+  let mut tails : Array Nat := #[]
+  for i in [:source.size] do
+    let line := source[i]!
+    if let j :: rest := positions.getD line [] then
+      positions := positions.insert line rest
+      let mut low := 0
+      let mut high := tails.size
+      if tails.back?.any (fun k => anchors[k]!.target < j) then
+        low := high
+      while low < high do
+        let mid := (low + high) / 2
+        if anchors[tails[mid]!]!.target < j then
+          low := mid + 1
+        else
+          high := mid
+      let previous := if low == 0 then none else some tails[low - 1]!
+      let index := anchors.size
+      anchors := anchors.push ⟨i, j, previous⟩
+      tails := if low == tails.size then tails.push index else tails.set! low index
+  let mut next := tails.back?
+  let mut pairs := #[]
+  while let some i := next do
+    let anchor := anchors[i]!
+    pairs := pairs.push (anchor.source, anchor.target)
+    next := anchor.previous
+  return pairs.reverse
+
+private def editScript (source target : Array TextLine) : Array Edit := Id.run do
+  let mut edits := #[]
+  let mut prefixLength := 0
+  while prefixLength < min source.size target.size &&
+      source[prefixLength]! == target[prefixLength]! do
+    edits := edits.push ⟨.context, source[prefixLength]!⟩
+    prefixLength := prefixLength + 1
+  let mut oldStop := source.size
+  let mut newStop := target.size
+  while oldStop > prefixLength && newStop > prefixLength &&
+      source[oldStop - 1]! == target[newStop - 1]! do
+    oldStop := oldStop - 1
+    newStop := newStop - 1
+  let oldMiddle := source.extract prefixLength oldStop
+  let newMiddle := target.extract prefixLength newStop
+  let pairs :=
+    if oldMiddle.isEmpty || newMiddle.isEmpty then #[]
+    else
+      match myersMatches oldMiddle newMiddle 64 with
+      | some pairs => pairs
+      | none => anchorMatches oldMiddle newMiddle
+  let mut oldCursor := prefixLength
+  let mut newCursor := prefixLength
+  for (oldIndex, newIndex) in pairs.push (oldMiddle.size, newMiddle.size) do
+    let i := oldIndex + prefixLength
+    let j := newIndex + prefixLength
+    for k in [oldCursor:i] do
+      edits := edits.push ⟨.remove, source[k]!⟩
+    for k in [newCursor:j] do
+      edits := edits.push ⟨.add, target[k]!⟩
+    if i < oldStop then
+      edits := edits.push ⟨.context, source[i]!⟩
+      oldCursor := i + 1
+      newCursor := j + 1
+  for i in [oldStop:source.size] do
+    edits := edits.push ⟨.context, source[i]!⟩
+  return edits
+
+private def diffWindows (edits : Array Edit) (context : Nat) :
     Array (Nat × Nat) := Id.run do
   let mut windows := #[]
   let mut current : Option (Nat × Nat) := none
   for i in [:edits.size] do
-    if edits[i]!.1 != .skip then
+    if edits[i]!.kind != .context then
       let start := i - context
       let stop := min (i + context + 1) edits.size
       if let some (previousStart, previousStop) := current then
@@ -275,7 +407,7 @@ private def diffWindows (edits : Array (Lean.Diff.Action × TextLine)) (context 
 /-- Generate a unified patch with three context lines by default. Labels have no LF or tab. -/
 def diff (source target : String) (oldFile := "a/file") (newFile := "b/file")
     (context : Nat := 3) : Patch := Id.run do
-  let edits := Lean.Diff.diff (splitText source) (splitText target)
+  let edits := editScript (splitText source) (splitText target)
   let windows := diffWindows edits context
   if windows.isEmpty then return .empty
   let mut oldOffset := 0
@@ -290,14 +422,10 @@ def diff (source target : String) (oldFile := "a/file") (newFile := "b/file")
     let mut oldCount := 0
     let mut newCount := 0
     for i in [start:stop] do
-      let (action, line) := edits[i]!
-      let kind := match action with
-        | .delete => EditKind.remove
-        | .insert => EditKind.add
-        | .skip => EditKind.context
-      body := body.push ⟨kind, line⟩
-      if kind.old then oldCount := oldCount + 1
-      if kind.new then newCount := newCount + 1
+      let edit := edits[i]!
+      body := body.push edit
+      if edit.kind.old then oldCount := oldCount + 1
+      if edit.kind.new then newCount := newCount + 1
     hunks := hunks.push {
       oldRange := .atOffset oldOffset oldCount
       newRange := .atOffset newOffset newCount
