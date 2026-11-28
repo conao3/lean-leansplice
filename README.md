@@ -1,3 +1,24 @@
+<p align="center">
+  <img src="docs/assets/banner.png" alt="leansplice: unified diffs for Lean 4" width="880">
+</p>
+
+<p align="center"><strong>Parse, render, generate and strict-apply unified diffs in Lean 4</strong></p>
+
+<p align="center">
+  <a href="https://github.com/conao3/lean-leansplice/actions/workflows/ci.yml"><img src="https://github.com/conao3/lean-leansplice/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/conao3/lean-leansplice" alt="License: Apache-2.0"></a>
+  <a href="lean-toolchain"><img src="https://img.shields.io/badge/Lean-v4.36.0-blue" alt="Lean v4.36.0"></a>
+  <a href="https://github.com/conao3/lean-leansplice/stargazers"><img src="https://img.shields.io/github/stars/conao3/lean-leansplice?style=flat" alt="GitHub stars"></a>
+</p>
+
+<p align="center">
+  <a href="#try-the-cli">Try the CLI</a> |
+  <a href="#lean-api">Lean API</a> |
+  <a href="#supported-patches">Supported patches</a> |
+  <a href="#development">Development</a> |
+  <a href="#diff-benchmark">Diff benchmark</a>
+</p>
+
 # leansplice
 
 Leansplice is a dependency-free Lean 4 library and CLI for parsing, rendering,
